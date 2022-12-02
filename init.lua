@@ -604,6 +604,45 @@ end
 
 -- Setup --
 
+-- Support for 3d_armor
+if minetest.get_modpath("3d_armor") then
+	local player_armor_light = {}
+	armor:register_on_update(function(player)
+		local name, inv = armor:get_valid_player(player)
+		if name then
+			local light = 0
+			local floodable = false
+			for i=1, inv:get_size("armor") do
+				local item = inv:get_stack("armor", i):get_name()
+				local def = minetest.registered_items[item]
+				if def and def.light_source and def.light_source > light then
+					light = def.light_source
+					floodable = def.floodable
+				end
+			end
+			if light > 0 then
+				player_armor_light[name] = {level = light, floodable = floodable}
+			else
+				player_armor_light[name] = nil
+			end
+		end
+	end)
+	wielded_light.register_item_light("armor", 0, false)
+
+	-- Track a player's armor wielded item
+	wielded_light.register_player_lightstep(function (player)
+		local name = player:get_player_name()
+		local armor_light = player_armor_light[name]
+		if armor_light then
+			wielded_light.register_item_light("armor", armor_light.level or 0, armor_light.floodable or false)
+			wielded_light.track_user_entity(player, "armor", "armor")
+		else
+			wielded_light.track_user_entity(player, "armor", "")
+		end
+	end)
+
+end
+
 -- Wielded item shining globalstep
 minetest.register_globalstep(global_timer_callback)
 
